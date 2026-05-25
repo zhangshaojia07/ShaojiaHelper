@@ -37,8 +37,8 @@
 
   <!-- 自动化魔法：编译成功后，自动把 .dll 和报错用的 .pdb 丢进你的游戏 Mods 文件夹里 -->
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(CelesteRoot)\Mods\KevinCrusher\Code" />
-    <Copy SourceFiles="$(TargetDir)$(TargetName).pdb" DestinationFolder="$(CelesteRoot)\Mods\KevinCrusher\Code" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(CelesteRoot)\Mods\Kevin Crusher\Code" />
+    <Copy SourceFiles="$(TargetDir)$(TargetName).pdb" DestinationFolder="$(CelesteRoot)\Mods\Kevin Crusher\Code" />
   </Target>
 
 </Project>
