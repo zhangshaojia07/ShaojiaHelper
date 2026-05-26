@@ -210,27 +210,24 @@ namespace Celeste.Mod.KevinCrusher.Entities {
 				returnLoopSfx.Param("submerged", Submerged ? 1 : 0);
 			}
 
-			if (Input.Dash.Pressed || Input.CrouchDash.Pressed)
+            foreach (Player entity in base.Scene.Tracker.GetEntities<Player>())
             {
-                foreach (Player entity in base.Scene.Tracker.GetEntities<Player>())
+                Vector2 dir = entity.Position - (Position + new Vector2(Width/2, Height/2));
+                if (Math.Abs(dir.X) <= Width / 2 && Math.Abs(dir.Y) >= Height / 2)
                 {
-					Vector2 dir = entity.Position - (Position + new Vector2(Width/2, Height/2));
-					if (Math.Abs(dir.X) <= Width / 2 && Math.Abs(dir.Y) > Height / 2)
-                    {
-						dir.X = 0;
-						dir.Y = dir.Y / Math.Abs(dir.Y);
-                    }
-					else if (Math.Abs(dir.Y) <= Height / 2 && Math.Abs(dir.X) > Width / 2)
-					{
-						dir.X = dir.X / Math.Abs(dir.X);
-						dir.Y = 0;
-					}
-					if (requiresLineOfSight && !IsPlayerSeen(entity, dir) || !CanActivate(dir))
-                    {
-						continue;
-                    }
-					Attack(dir);
-				}
+                    dir.X = 0;
+                    dir.Y = dir.Y / Math.Abs(dir.Y);
+                }
+                else if (Math.Abs(dir.Y) <= Height / 2 && Math.Abs(dir.X) > Width / 2)
+                {
+                    dir.X = dir.X / Math.Abs(dir.X);
+                    dir.Y = 0;
+                }
+                if (requiresLineOfSight && !IsPlayerSeen(entity, dir) || !CanActivate(dir))
+                {
+                    continue;
+                }
+                Attack(dir);
             }
 		}
 
