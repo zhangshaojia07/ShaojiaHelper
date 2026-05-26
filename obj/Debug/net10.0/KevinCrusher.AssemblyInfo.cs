@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("KevinCrusher")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+fb7bdac49d21a75abd9fc7f0477017490170a5e2")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+cb72b5ceeb04e4bd38faf45d70fe3abdab082c58")]
 [assembly: System.Reflection.AssemblyProductAttribute("KevinCrusher")]
 [assembly: System.Reflection.AssemblyTitleAttribute("KevinCrusher")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

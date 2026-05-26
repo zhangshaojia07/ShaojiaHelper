@@ -46,8 +46,10 @@ namespace Celeste.Mod.KevinCrusher.Entities {
 		private Coroutine attackCoroutine;
 
 		private bool canActivate;
-		private bool canMoveVertically;
-		private bool canMoveHorizontally;
+		private bool canMoveUp;
+		private bool canMoveDown;
+		private bool canMoveLeft;
+		private bool canMoveRight;
 		private bool chillOut;
 		private bool giant;
 		private bool requiresLineOfSight;
@@ -71,6 +73,10 @@ namespace Celeste.Mod.KevinCrusher.Entities {
 			: base(position, width, height, safe: false)
 		{
 			returnStack = new List<MoveState>();
+            this.canMoveRight = right;
+            this.canMoveUp = up;
+            this.canMoveLeft = left;
+            this.canMoveDown = down;
 			this.chillOut = chillOut;
 			giant = base.Width >= 48f && base.Height >= 48f && chillOut;
 			canActivate = true;
@@ -79,23 +85,8 @@ namespace Celeste.Mod.KevinCrusher.Entities {
 			Add(attackCoroutine);
 			List<MTexture> atlasSubtextures = GFX.Game.GetAtlasSubtextures("objects/KevinCrusher/Shaojia07/KevinCrusher/block");
 			MTexture idle;
-			switch (axes)
-			{
-				default:
-					idle = atlasSubtextures[3];
-					canMoveHorizontally = (canMoveVertically = true);
-					break;
-				case Axes.Horizontal:
-					idle = atlasSubtextures[1];
-					canMoveHorizontally = true;
-					canMoveVertically = false;
-					break;
-				case Axes.Vertical:
-					idle = atlasSubtextures[2];
-					canMoveHorizontally = false;
-					canMoveVertically = true;
-					break;
-			}
+            int bitmask = (right ? 1 : 0) | (up ? 2 : 0) | (left ? 4 : 0) | (down ? 8 : 0);
+			idle = atlasSubtextures[bitmask];
 			Add(face = GFX.SpriteBank.Create(giant ? "giant_crushblock_face" : "crushblock_face"));
 			face.Position = new Vector2(base.Width, base.Height) / 2f;
 			face.Play("idle");
@@ -236,7 +227,7 @@ namespace Celeste.Mod.KevinCrusher.Entities {
 					}
 					if (requiresLineOfSight && !IsPlayerSeen(entity, dir) || !CanActivate(dir))
                     {
-						return;
+						continue;
                     }
 					Attack(dir);
 				}
@@ -337,18 +328,15 @@ namespace Celeste.Mod.KevinCrusher.Entities {
 			{
 				return false;
 			}
-			if (canActivate && crushDir != direction)
-			{
-				if (direction.X != 0f && !canMoveHorizontally)
-				{
-					return false;
-				}
-				if (direction.Y != 0f && !canMoveVertically)
-				{
-					return false;
-				}
-				return true;
-			}
+            if (canActivate && crushDir != direction)
+            {
+                if (direction.X > 0f && !canMoveRight) return false;
+                if (direction.X < 0f && !canMoveLeft)  return false;
+                if (direction.Y > 0f && !canMoveDown)  return false;
+                if (direction.Y < 0f && !canMoveUp)    return false;
+
+                return true;
+            }
 			return false;
 		}
 
