@@ -210,20 +210,43 @@ namespace Celeste.Mod.KevinCrusher.Entities {
 				returnLoopSfx.Param("submerged", Submerged ? 1 : 0);
 			}
 
-            foreach (Player entity in base.Scene.Tracker.GetEntities<Player>())
+            foreach (Player player in base.Scene.Tracker.GetEntities<Player>())
             {
-                Vector2 dir = entity.Position - (Position + new Vector2(Width/2, Height/2));
-                if (Math.Abs(dir.X) <= Width / 2 && Math.Abs(dir.Y) >= Height / 2)
+                Vector2 dir;
+                int up = (int)(Position.Y - player.Bottom);
+                int down = (int)(player.Top - Position.Y - Height);
+                int left = (int)(Position.X - player.Right);
+                int right = (int)(player.Left - Position.X - Width);
+                if (up>=0 && left<0 && right<0)
                 {
-                    dir.X = 0;
-                    dir.Y = dir.Y / Math.Abs(dir.Y);
+                    dir.X=0;
+                    dir.Y=-1;
                 }
-                else if (Math.Abs(dir.Y) <= Height / 2 && Math.Abs(dir.X) > Width / 2)
+                else if (down>=0 && left<0 && right<0)
                 {
-                    dir.X = dir.X / Math.Abs(dir.X);
-                    dir.Y = 0;
+                    dir.X=0;
+                    dir.Y=1;
                 }
-                if (requiresLineOfSight && !IsPlayerSeen(entity, dir) || !CanActivate(dir))
+                else if (left>=0 && up<0 && down<0)
+                {
+                    dir.X=-1;
+                    dir.Y=0;
+                }
+                else if (right>=0 && up<0 && down<0)
+                {
+                    dir.X=1;
+                    dir.Y=0;
+                }
+                else
+                {
+                    continue;
+                }
+                // Engine.Commands.Log($"[Debug] U:{up} D:{down} L:{left} R:{right}");
+                if (!CanActivate(dir))
+                {
+                    continue;
+                }
+                if (requiresLineOfSight && !IsPlayerSeen(player, dir))
                 {
                     continue;
                 }
