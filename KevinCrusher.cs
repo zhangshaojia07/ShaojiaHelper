@@ -210,47 +210,50 @@ namespace Celeste.Mod.KevinCrusher.Entities {
 				returnLoopSfx.Param("submerged", Submerged ? 1 : 0);
 			}
 
-            foreach (Player player in base.Scene.Tracker.GetEntities<Player>())
+            if (canActivate)
             {
-                Vector2 dir;
-                int up = (int)(Position.Y - player.Bottom);
-                int down = (int)(player.Top - Position.Y - Height);
-                int left = (int)(Position.X - player.Right);
-                int right = (int)(player.Left - Position.X - Width);
-                if (up>=0 && left<0 && right<0)
+                foreach (Player player in base.Scene.Tracker.GetEntities<Player>())
                 {
-                    dir.X=0;
-                    dir.Y=-1;
-                }
-                else if (down>=0 && left<0 && right<0)
-                {
-                    dir.X=0;
-                    dir.Y=1;
-                }
-                else if (left>=0 && up<0 && down<0)
-                {
-                    dir.X=-1;
-                    dir.Y=0;
-                }
-                else if (right>=0 && up<0 && down<0)
-                {
-                    dir.X=1;
-                    dir.Y=0;
-                }
-                else
-                {
-                    continue;
-                }
-                // Engine.Commands.Log($"[Debug] U:{up} D:{down} L:{left} R:{right}");
-                if (!CanActivate(dir))
-                {
-                    continue;
-                }
-                if (requiresLineOfSight && !IsPlayerSeen(player, dir))
-                {
-                    continue;
-                }
-                Attack(dir);
+                    Vector2 dir;
+                    int up = (int)(Position.Y - player.Bottom);
+                    int down = (int)(player.Top - Position.Y - Height);
+                    int left = (int)(Position.X - player.Right);
+                    int right = (int)(player.Left - Position.X - Width);
+                    if (up>=0 && left<0 && right<0)
+                    {
+                        dir.X=0;
+                        dir.Y=-1;
+                    }
+                    else if (down>=0 && left<0 && right<0)
+                    {
+                        dir.X=0;
+                        dir.Y=1;
+                    }
+                    else if (left>=0 && up<0 && down<0)
+                    {
+                        dir.X=-1;
+                        dir.Y=0;
+                    }
+                    else if (right>=0 && up<0 && down<0)
+                    {
+                        dir.X=1;
+                        dir.Y=0;
+                    }
+                    else
+                    {
+                        continue;
+                    }
+                    // Engine.Commands.Log($"[Debug] U:{up} D:{down} L:{left} R:{right}");
+                    if (!CanActivate(dir))
+                    {
+                        continue;
+                    }
+                    if (requiresLineOfSight && !IsPlayerSeen(player, dir))
+                    {
+                        continue;
+                    }
+                    Attack(dir);
+                }    
             }
 		}
 
@@ -479,10 +482,6 @@ namespace Celeste.Mod.KevinCrusher.Entities {
 			Input.Rumble(RumbleStrength.Strong, RumbleLength.Medium);
 			StartShaking(0.4f);
 			yield return 0.4f;
-			if (!chillOut)
-			{
-				canActivate = true;
-			}
 			StopPlayerRunIntoAnimation = false;
 			bool slowing = false;
 			float speed = 0f;
@@ -626,7 +625,8 @@ namespace Celeste.Mod.KevinCrusher.Entities {
 			if (chillOut)
 			{
 				yield break;
-			}
+            }
+			canActivate = true;
 			face.Play("hurt");
 			returnLoopSfx.Play("event:/game/06_reflection/crushblock_return_loop");
 			yield return 0.4f;
