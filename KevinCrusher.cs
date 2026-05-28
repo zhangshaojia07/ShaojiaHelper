@@ -123,7 +123,7 @@ namespace Celeste.Mod.KevinCrusher.Entities {
 		}
 
 		public KevinCrusher(EntityData data, Vector2 offset)
-			: this(data.Position + offset, data.Width, data.Height, data.Bool("lookRight"), data.Bool("lookUp"), data.Bool("lookLeft"), data.Bool("lookDown"), data.Bool("chillout"))
+			: this(data.Position + offset, data.Width, data.Height, data.Bool("lookRight"), data.Bool("lookUp"), data.Bool("lookLeft"), data.Bool("lookDown"), data.Bool("chillout"), data.Bool("interruptable"), data.Bool("nonReturn"))
 		{
 			requiresLineOfSight = data.Bool("requiresLineOfSight");
 		}
