@@ -53,6 +53,8 @@ namespace Celeste.Mod.KevinCrusher.Entities {
 		private bool chillOut;
 		private bool giant;
 		private bool requiresLineOfSight;
+		private bool interruptable;
+		private bool nonReturn;
 
 		private Sprite face;
 
@@ -69,7 +71,7 @@ namespace Celeste.Mod.KevinCrusher.Entities {
 
 		private bool Submerged => base.Scene.CollideCheck<Water>(new Rectangle((int)(base.Center.X - 4f), (int)base.Center.Y, 8, 4));
 
-		public KevinCrusher(Vector2 position, float width, float height, bool right, bool up, bool left, bool down, bool chillOut = false)
+		public KevinCrusher(Vector2 position, float width, float height, bool right, bool up, bool left, bool down, bool chillOut = false, bool interruptable = false, bool nonReturn = true)
 			: base(position, width, height, safe: false)
 		{
 			returnStack = new List<MoveState>();
@@ -78,6 +80,8 @@ namespace Celeste.Mod.KevinCrusher.Entities {
             this.canMoveLeft = left;
             this.canMoveDown = down;
 			this.chillOut = chillOut;
+			this.interruptable = interruptable;
+			this.nonReturn = nonReturn;
 			giant = base.Width >= 48f && base.Height >= 48f && chillOut;
 			canActivate = true;
 			attackCoroutine = new Coroutine();
@@ -482,6 +486,10 @@ namespace Celeste.Mod.KevinCrusher.Entities {
 			Input.Rumble(RumbleStrength.Strong, RumbleLength.Medium);
 			StartShaking(0.4f);
 			yield return 0.4f;
+			if (!chillOut && interruptable)
+			{
+				canActivate = true;
+			}
 			StopPlayerRunIntoAnimation = false;
 			bool slowing = false;
 			float speed = 0f;
@@ -632,6 +640,10 @@ namespace Celeste.Mod.KevinCrusher.Entities {
 			yield return 0.4f;
 			speed = 0f;
 			float waypointSfxDelay = 0f;
+			if (nonReturn)
+			{
+				returnStack.Clear();
+			}
 			while (returnStack.Count > 0)
 			{
 				yield return null;
