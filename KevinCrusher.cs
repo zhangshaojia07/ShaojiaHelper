@@ -634,15 +634,13 @@ namespace Celeste.Mod.KevinCrusher.Entities {
 			{
 				yield break;
             }
+			canActivate = true;
 			if (nonReturn)
 			{
 				face.Play("idle");
 				Audio.Play("event:/game/06_reflection/crushblock_rest", Center);
-				yield return 0.4f;
-				canActivate = true;
 				yield break;
 			}
-			canActivate = true;
 			face.Play("hurt");
 			returnLoopSfx.Play("event:/game/06_reflection/crushblock_return_loop");
 			yield return 0.4f;
