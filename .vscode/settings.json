@@ -1,0 +1,6 @@
+{
+    // 告诉 C# 插件，自动扫描子文件夹里的项目文件
+    "dotnet.projects": [
+        "Source/*.csproj"
+    ]
+}

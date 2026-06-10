@@ -1,0 +1,6 @@
+- Name: ShaojiaHelper
+  Version: 1.0.0
+  DLL: Code/ShaojiaHelper.dll
+  Dependencies:
+    - Name: Everest
+      Version: 1.6305.0

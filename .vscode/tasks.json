@@ -1,0 +1,15 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "一键同步并编译",
+            "type": "shell",
+            "command": "${workspaceFolder}/sync_and_build.bat", // 直接调用你的脚本
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": true // 设为默认编译任务
+            }
+        }
+    ]
+}

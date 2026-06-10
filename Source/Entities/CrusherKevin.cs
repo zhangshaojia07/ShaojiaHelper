@@ -1,15 +1,13 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
+﻿using System.Collections;
 using Celeste.Mod.Entities;
 using Microsoft.Xna.Framework;
 using Monocle;
 
-namespace Celeste.Mod.KevinCrusher.Entities {
+namespace Celeste.Mod.ShaojiaHelper.Entities {
 
-    [CustomEntity("KevinCrusher/KevinCrusher")]
+    [CustomEntity("ShaojiaHelper/CrusherKevin")]
     [TrackedAs(typeof(CrushBlock))]
-    public class KevinCrusher : Solid {
+    public class CrusherKevin : Solid {
         public enum Axes
 		{
 			Both,
@@ -71,7 +69,7 @@ namespace Celeste.Mod.KevinCrusher.Entities {
 
 		private bool Submerged => base.Scene.CollideCheck<Water>(new Rectangle((int)(base.Center.X - 4f), (int)base.Center.Y, 8, 4));
 
-		public KevinCrusher(Vector2 position, float width, float height, bool right, bool up, bool left, bool down, bool chillOut = false, bool interruptable = false, bool nonReturn = true)
+		public CrusherKevin(Vector2 position, float width, float height, bool right, bool up, bool left, bool down, bool chillOut = false, bool interruptable = false, bool nonReturn = true)
 			: base(position, width, height, safe: false)
 		{
 			returnStack = new List<MoveState>();
@@ -87,7 +85,7 @@ namespace Celeste.Mod.KevinCrusher.Entities {
 			attackCoroutine = new Coroutine();
 			attackCoroutine.RemoveOnComplete = false;
 			Add(attackCoroutine);
-			List<MTexture> atlasSubtextures = GFX.Game.GetAtlasSubtextures("objects/KevinCrusher/Shaojia07/KevinCrusher/block");
+			List<MTexture> atlasSubtextures = GFX.Game.GetAtlasSubtextures("objects/ShaojiaHelper/crusherKevin/block");
 			MTexture idle;
             int bitmask = (right ? 1 : 0) | (up ? 2 : 0) | (left ? 4 : 0) | (down ? 8 : 0);
 			idle = atlasSubtextures[bitmask];
@@ -122,7 +120,7 @@ namespace Celeste.Mod.KevinCrusher.Entities {
 			Add(new WaterInteraction(() => crushDir != Vector2.Zero));
 		}
 
-		public KevinCrusher(EntityData data, Vector2 offset)
+		public CrusherKevin(EntityData data, Vector2 offset)
 			: this(data.Position + offset, data.Width, data.Height, data.Bool("lookRight"), data.Bool("lookUp"), data.Bool("lookLeft"), data.Bool("lookDown"), data.Bool("chillout"), data.Bool("interruptable"), data.Bool("nonReturn"))
 		{
 			requiresLineOfSight = data.Bool("requiresLineOfSight");
