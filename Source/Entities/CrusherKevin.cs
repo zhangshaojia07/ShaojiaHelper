@@ -33,11 +33,17 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 		private const float ReturnSpeed = 60f;
 		private const float ReturnAccel = 160f;
 
+		private const float SfxMaxVolume = 1.0f;
+		private const float SfxMinVolume = 0.05f;
+		private const float SfxDecayRate = 0.85f;
+		private const int SfxIntervalLeniency = 3;
+
 		private Color fill = Calc.HexToColor("62222b");
 
 		private Level level;
 
 		private Vector2 crushDir;
+		private Vector2 lastCrushDir;
 
 		private List<MoveState> returnStack;
 
@@ -49,6 +55,7 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 		private bool canMoveLeft;
 		private bool canMoveRight;
 		private bool chillOut;
+		private bool coolingDown;
 		private bool giant;
 		private bool requiresLineOfSight;
 		private bool interruptable;
@@ -67,6 +74,9 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 		private SoundSource currentMoveLoopSfx;
 		private SoundSource returnLoopSfx;
 
+		private int framesSinceLastAttack = 0;
+		private float currentSfxVolume = 1.0f;
+
 		private bool Submerged => base.Scene.CollideCheck<Water>(new Rectangle((int)(base.Center.X - 4f), (int)base.Center.Y, 8, 4));
 
 		public CrusherKevin(Vector2 position, float width, float height, bool right, bool up, bool left, bool down, bool chillOut = false, bool interruptable = false, bool nonReturn = true)
@@ -81,6 +91,7 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 			this.interruptable = interruptable;
 			this.nonReturn = nonReturn;
 			giant = base.Width >= 48f && base.Height >= 48f && chillOut;
+			coolingDown = false;
 			canActivate = true;
 			attackCoroutine = new Coroutine();
 			attackCoroutine.RemoveOnComplete = false;
@@ -212,6 +223,10 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 				returnLoopSfx.Param("submerged", Submerged ? 1 : 0);
 			}
 
+			if (!coolingDown){
+				framesSinceLastAttack++;
+			}
+			bool attacked = false;
             if (canActivate)
             {
                 foreach (Player player in base.Scene.Tracker.GetEntities<Player>())
@@ -255,8 +270,19 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
                         continue;
                     }
                     Attack(dir);
+                    attacked = true;
                 }    
             }
+			if (framesSinceLastAttack >= SfxIntervalLeniency && !attacked && crushDir == Vector2.Zero && currentMoveLoopSfx != null)
+			{
+				currentMoveLoopSfx.Param("end", 1f);
+				SoundSource sfx = currentMoveLoopSfx;
+				currentMoveLoopSfx = null;
+				Alarm.Set(this, 0.5f, delegate
+				{
+					sfx.RemoveSelf();
+				});
+			}
 		}
 
 		public override void Render()
@@ -367,28 +393,45 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 
 		private void Attack(Vector2 direction)
 		{
-			Audio.Play("event:/game/06_reflection/crushblock_activate", base.Center);
-			if (currentMoveLoopSfx != null)
+			if (framesSinceLastAttack <= SfxIntervalLeniency && direction == lastCrushDir)
 			{
-				currentMoveLoopSfx.Param("end", 1f);
-				SoundSource sfx = currentMoveLoopSfx;
-				Alarm.Set(this, 0.5f, delegate
-				{
-					sfx.RemoveSelf();
-				});
-			}
-			Add(currentMoveLoopSfx = new SoundSource());
-			currentMoveLoopSfx.Position = new Vector2(base.Width, base.Height) / 2f;
-			if (SaveData.Instance != null && SaveData.Instance.Name != null && SaveData.Instance.Name.StartsWith("FWAHAHA", StringComparison.InvariantCultureIgnoreCase))
-			{
-				currentMoveLoopSfx.Play("event:/game/06_reflection/crushblock_move_loop_covert");
+				currentSfxVolume = (currentSfxVolume - SfxMinVolume) * SfxDecayRate + SfxMinVolume;
 			}
 			else
 			{
-				currentMoveLoopSfx.Play("event:/game/06_reflection/crushblock_move_loop");
+				currentSfxVolume = SfxMaxVolume;
+			}
+			// Engine.Commands.Log($"[Debug] framesSinceLastAttack:{framesSinceLastAttack} currentSfxVolume:{currentSfxVolume}");
+			var activateSfx = Audio.Play("event:/game/06_reflection/crushblock_activate", base.Center);
+			if (activateSfx != null)
+			{
+				activateSfx.setVolume(currentSfxVolume);
+			}
+			if (framesSinceLastAttack > SfxIntervalLeniency || currentMoveLoopSfx == null)
+			{
+				if (currentMoveLoopSfx != null)
+				{
+					currentMoveLoopSfx.Param("end", 1f);
+					SoundSource sfx = currentMoveLoopSfx;
+					Alarm.Set(this, 0.5f, delegate
+					{
+						sfx.RemoveSelf();
+					});
+				}
+				Add(currentMoveLoopSfx = new SoundSource());
+				currentMoveLoopSfx.Position = new Vector2(base.Width, base.Height) / 2f;
+				if (SaveData.Instance != null && SaveData.Instance.Name != null && SaveData.Instance.Name.StartsWith("FWAHAHA", StringComparison.InvariantCultureIgnoreCase))
+				{
+					currentMoveLoopSfx.Play("event:/game/06_reflection/crushblock_move_loop_covert");
+				}
+				else
+				{
+					currentMoveLoopSfx.Play("event:/game/06_reflection/crushblock_move_loop");
+				}
 			}
 			face.Play("hit");
 			crushDir = direction;
+			lastCrushDir = direction;
 			canActivate = false;
 			attackCoroutine.Replace(AttackSequence());
 			ClearRemainder();
@@ -484,6 +527,7 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 			Input.Rumble(RumbleStrength.Strong, RumbleLength.Medium);
 			StartShaking(0.4f);
 			yield return 0.4f;
+			framesSinceLastAttack = 0;
 			if (!chillOut && interruptable)
 			{
 				canActivate = true;
@@ -506,11 +550,6 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 						Alarm.Set(this, 0.5f, delegate
 						{
 							face.Play("hurt");
-							SoundSource soundSource = currentMoveLoopSfx;
-							if (soundSource != null)
-							{
-								soundSource = soundSource.Stop();
-							}
 							TurnOffImages();
 						});
 					}
@@ -614,20 +653,18 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 					}
 				}
 			}
-			Audio.Play("event:/game/06_reflection/crushblock_impact", Center);
+			coolingDown = true;
+			var activateSfx = Audio.Play("event:/game/06_reflection/crushblock_impact", Center);
+			if (activateSfx != null) {
+				activateSfx.setVolume(currentSfxVolume);
+			}
 			level.DirectionalShake(crushDir);
 			Input.Rumble(RumbleStrength.Medium, RumbleLength.Medium);
 			StartShaking(0.4f);
 			StopPlayerRunIntoAnimation = true;
-			SoundSource sfx = currentMoveLoopSfx;
-			currentMoveLoopSfx.Param("end", 1f);
-			currentMoveLoopSfx = null;
-			Alarm.Set(this, 0.5f, delegate
-			{
-				sfx.RemoveSelf();
-			});
 			crushDir = Vector2.Zero;
 			TurnOffImages();
+			coolingDown = false;
 			if (chillOut)
 			{
 				yield break;
@@ -636,7 +673,10 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 			if (nonReturn)
 			{
 				face.Play("idle");
-				Audio.Play("event:/game/06_reflection/crushblock_rest", Center);
+				activateSfx = Audio.Play("event:/game/06_reflection/crushblock_rest", Center);
+				if (activateSfx != null) {
+					activateSfx.setVolume(currentSfxVolume);
+				}
 				yield break;
 			}
 			face.Play("hurt");
