@@ -7,9 +7,9 @@ local crusherKevin = {}
 crusherKevin.name = "ShaojiaHelper/CrusherKevin"
 crusherKevin.depth = 0
 crusherKevin.minimumSize = {24, 24}
-crusherKevin.fieldInformation = {} -- 布尔值类型 Loenn 会自动推断为勾选框，无需额外配置
+crusherKevin.fieldInformation = {} -- Boolean fields become checkboxes in Loenn automatically; no extra configuration needed
 
--- 唯一实体放置设置
+-- Single entity placement configuration
 crusherKevin.placements = {
     {
         name = "Crusher Kevin",
@@ -47,19 +47,18 @@ function crusherKevin.sprite(room, entity)
     local right = entity.lookRight or false
     local chillout = entity.chillout
 
-    -- 1. 计算四个方向组合而成的二进制掩码 (Mask)
-    -- 如果你的 C# 代码中权值顺序不同（例如 Left=1, Right=2...），只需调换下方的加权数字即可
+    -- 1. Build a bitmask out of the four directions
+    -- If the weights in the C# code differ (e.g. Left = 1, Right = 2, ...), just swap the numbers below
     local mask = 0
     if up then mask = mask + 2 end
     if down then mask = mask + 8 end
     if left then mask = mask + 4 end
     if right then mask = mask + 1 end
 
-    -- 2. 将掩码变量转成 02d 格式的字符串 (例如: "00", "01", "05", "15")
+    -- 2. Turn the mask into a zero-padded two-digit string (e.g. "00", "01", "05", "15")
     local maskString = string.format("%02d", mask)
 
-    -- 3. 利用格式化后的字符串动态拼接贴图路径
-    -- 这样可以自动匹配类似 block00, block01 ... block15 的贴图
+    -- 3. Build the texture path from that string, so it matches block00, block01 ... block15
     local frameTexture = "objects/ShaojiaHelper/crusherKevin/block" .. maskString
 
     local giant = height >= 48 and width >= 48 and chillout

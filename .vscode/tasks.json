@@ -2,13 +2,21 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "一键同步并编译",
+            "label": "Sync and Build",
             "type": "shell",
-            "command": "${workspaceFolder}/sync_and_build.bat", // 直接调用你的脚本
+            "command": "bash",
+            "args": [
+                "${workspaceFolder}/sync_and_build.sh"
+            ],
             "problemMatcher": [],
             "group": {
                 "kind": "build",
-                "isDefault": true // 设为默认编译任务
+                "isDefault": true
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared",
+                "clear": true
             }
         }
     ]
