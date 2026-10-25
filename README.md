@@ -1,5 +1,7 @@
 # ShaojiaHelper
 
+[![ShaojaHelper on GameBanana](https://gamebanana.com/mods/embeddables/684784?type=large)](https://gamebanana.com/mods/684784)
+
 A dumb code mod for game Celeste. You can download the mod at gamebanana [here](https://gamebanana.com/mods/684784).
 
 ## Building from source
@@ -36,5 +38,7 @@ In VS Code, open this folder and press `Ctrl+Shift+B` to run the same task
 If you find bugs, create a new issue or a pull request to let me know.
 
 ## Changelog
-
-See [CHANGELOG.md](CHANGELOG.md).
+### Version 1.0.0 - First Release
+#### Features:
+ - Loenn plugins support
+ - Added Crusher Kevins, which activate when they have a line of sight to the player in four directions.
