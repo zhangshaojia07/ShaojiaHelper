@@ -1,27 +1,26 @@
-namespace Celeste.Mod.ShaojiaHelper.Module {
-    public class ShaojiaHelper : EverestModule {
-        public static ShaojiaHelper Instance;
+using System;
 
-        public ShaojiaHelper()
-        {
+namespace Celeste.Mod.ShaojiaHelper {
+    public class ShaojiaHelperModule : EverestModule {
+        public static ShaojiaHelperModule Instance { get; private set; }
+
+        public override Type SettingsType => typeof(ShaojiaHelperModuleSettings);
+        public static ShaojiaHelperModuleSettings Settings => (ShaojiaHelperModuleSettings)Instance._Settings;
+
+        public override Type SessionType => typeof(ShaojiaHelperModuleSession);
+        public static ShaojiaHelperModuleSession Session => (ShaojiaHelperModuleSession)Instance._Session;
+
+        public override Type SaveDataType => typeof(ShaojiaHelperModuleSaveData);
+        public static ShaojiaHelperModuleSaveData SaveData => (ShaojiaHelperModuleSaveData)Instance._SaveData;
+
+        public ShaojiaHelperModule() {
             Instance = this;
         }
 
-        public override void Load()
-        {
+        public override void Load() {
         }
 
-        public override void Initialize()
-        {
+        public override void Unload() {
         }
-
-        public override void LoadContent(bool firstLoad)
-        {
-        }
-
-        public override void Unload()
-        {
-        }
-
     }
 }

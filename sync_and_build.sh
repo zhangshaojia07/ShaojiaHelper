@@ -22,7 +22,7 @@ CELESTE_DIR="${CELESTE_DIR/#\~/$HOME}"
 [[ -f "$CELESTE_DIR/Celeste.dll" ]] || die "No Celeste.dll in '$CELESTE_DIR'; please check .celeste-path"
 [[ -d "$CELESTE_DIR/Mods" ]] || die "'$CELESTE_DIR/Mods' does not exist; launch Celeste / Everest once first"
 
-command -v dotnet >/dev/null 2>&1 || die "dotnet not found. Install the .NET SDK first: sudo apt install dotnet-sdk-10.0"
+command -v dotnet >/dev/null 2>&1 || die "dotnet not found. Install the .NET SDK (8.0 or newer): sudo apt install dotnet-sdk-8.0"
 command -v rsync >/dev/null 2>&1 || die "rsync not found: sudo apt install rsync"
 
 MOD_DIR="$CELESTE_DIR/Mods/ShaojiaHelper"

@@ -6,7 +6,6 @@ using Monocle;
 namespace Celeste.Mod.ShaojiaHelper.Entities {
 
     [CustomEntity("ShaojiaHelper/CrusherKevin")]
-    [TrackedAs(typeof(CrushBlock))]
     public class CrusherKevin : Solid {
         public enum Axes
 		{
