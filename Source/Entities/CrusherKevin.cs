@@ -261,7 +261,7 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 		}
 
 		public CrusherKevin(EntityData data, Vector2 offset)
-			: this(data.Position + offset, data.Width, data.Height, data.Bool("lookRight"), data.Bool("lookUp"), data.Bool("lookLeft"), data.Bool("lookDown"), data.Bool("chillout"), data.Bool("interruptable"), data.Bool("nonReturn"))
+			: this(data.Position + offset, data.Width, data.Height, data.Bool("lookRight"), data.Bool("lookUp"), data.Bool("lookLeft"), data.Bool("lookDown"), data.Bool("chillout"), data.Bool("interruptable"), data.Bool("nonReturn", defaultValue: true))
 		{
 			requiresLineOfSight = data.Bool("requiresLineOfSight");
 		}
