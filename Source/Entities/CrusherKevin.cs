@@ -47,6 +47,14 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 		private static readonly bool EnableMoveLoopSfx = false;
 		private static readonly bool EnableReturnLoopSfx = false;
 
+		// Particle debug switches.
+		private static readonly bool EnableActivateParticles = false;
+		private static readonly bool EnableCrushingParticles = false;
+		private static readonly bool EnableImpactParticles = false;
+
+		// Shake debug switch; covers block shake, directional screen shake and controller rumble.
+		private static readonly bool EnableShakeEffects = false;
+
 		private Color fill = Calc.HexToColor("62222b");
 
 		private Level level = null!;
@@ -654,7 +662,20 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 				num = (int)(base.Width / 8f) * 4;
 			}
 			num += 2;
-			level.Particles.Emit(CrushBlock.P_Activate, num, position, positionRange, direction);
+			if (EnableActivateParticles)
+			{
+				level.Particles.Emit(CrushBlock.P_Activate, num, position, positionRange, direction);
+			}
+		}
+
+		private static void EmitImpactParticle(Level level, Vector2 position, float direction)
+		{
+			if (!EnableImpactParticles)
+			{
+				return;
+			}
+
+			level.ParticlesFG.Emit(CrushBlock.P_Impact, position, direction);
 		}
 
 		private IEnumerator AttackSequence()
@@ -662,8 +683,11 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 			// Snapshot the position at attack time so Impact can be skipped when
 			// Kevin never actually moved along this crush direction.
 			Vector2 attackStartPosition = Position;
-			Input.Rumble(RumbleStrength.Strong, RumbleLength.Medium);
-			StartShaking(0.4f);
+			if (EnableShakeEffects)
+			{
+				Input.Rumble(RumbleStrength.Strong, RumbleLength.Medium);
+				StartShaking(0.4f);
+			}
 			yield return 0.4f;
 			framesSinceLastAttack = 0;
 			if (!chillOut && interruptable)
@@ -730,7 +754,10 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 						position = new Vector2(Calc.Random.Range(Left + 3f, Right - 3f), Bottom - 1f);
 						direction = (float)Math.PI / 2f;
 					}
-					level.Particles.Emit(CrushBlock.P_Crushing, position, direction);
+					if (EnableCrushingParticles)
+					{
+						level.Particles.Emit(CrushBlock.P_Crushing, position, direction);
+					}
 				}
 				yield return null;
 			}
@@ -747,8 +774,8 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 					Vector2 vector2 = new Vector2(Left - 1f, Top + 4f + (float)(i * 8));
 					if (!Scene.CollideCheck<Water>(vector2) && Scene.CollideCheck<Solid>(vector2))
 					{
-						SceneAs<Level>().ParticlesFG.Emit(CrushBlock.P_Impact, vector2 + vector, 0f);
-						SceneAs<Level>().ParticlesFG.Emit(CrushBlock.P_Impact, vector2 - vector, 0f);
+						EmitImpactParticle(level, vector2 + vector, 0f);
+						EmitImpactParticle(level, vector2 - vector, 0f);
 					}
 				}
 			}
@@ -760,8 +787,8 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 					Vector2 vector4 = new Vector2(Right + 1f, Top + 4f + (float)(j * 8));
 					if (!Scene.CollideCheck<Water>(vector4) && Scene.CollideCheck<Solid>(vector4))
 					{
-						SceneAs<Level>().ParticlesFG.Emit(CrushBlock.P_Impact, vector4 + vector3, (float)Math.PI);
-						SceneAs<Level>().ParticlesFG.Emit(CrushBlock.P_Impact, vector4 - vector3, (float)Math.PI);
+						EmitImpactParticle(level, vector4 + vector3, (float)Math.PI);
+						EmitImpactParticle(level, vector4 - vector3, (float)Math.PI);
 					}
 				}
 			}
@@ -773,8 +800,8 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 					Vector2 vector6 = new Vector2(Left + 4f + (float)(k * 8), Top - 1f);
 					if (!Scene.CollideCheck<Water>(vector6) && Scene.CollideCheck<Solid>(vector6))
 					{
-						SceneAs<Level>().ParticlesFG.Emit(CrushBlock.P_Impact, vector6 + vector5, (float)Math.PI / 2f);
-						SceneAs<Level>().ParticlesFG.Emit(CrushBlock.P_Impact, vector6 - vector5, (float)Math.PI / 2f);
+						EmitImpactParticle(level, vector6 + vector5, (float)Math.PI / 2f);
+						EmitImpactParticle(level, vector6 - vector5, (float)Math.PI / 2f);
 					}
 				}
 			}
@@ -786,8 +813,8 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 					Vector2 vector8 = new Vector2(Left + 4f + (float)(l * 8), Bottom + 1f);
 					if (!Scene.CollideCheck<Water>(vector8) && Scene.CollideCheck<Solid>(vector8))
 					{
-						SceneAs<Level>().ParticlesFG.Emit(CrushBlock.P_Impact, vector8 + vector7, -(float)Math.PI / 2f);
-						SceneAs<Level>().ParticlesFG.Emit(CrushBlock.P_Impact, vector8 - vector7, -(float)Math.PI / 2f);
+						EmitImpactParticle(level, vector8 + vector7, -(float)Math.PI / 2f);
+						EmitImpactParticle(level, vector8 - vector7, -(float)Math.PI / 2f);
 					}
 				}
 			}
@@ -801,9 +828,12 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 			{
 				PlayImpactSfx(Center, impactVolume);
 			}
-			level.DirectionalShake(crushDir);
-			Input.Rumble(RumbleStrength.Medium, RumbleLength.Medium);
-			StartShaking(0.4f);
+			if (EnableShakeEffects)
+			{
+				level.DirectionalShake(crushDir);
+				Input.Rumble(RumbleStrength.Medium, RumbleLength.Medium);
+				StartShaking(0.4f);
+			}
 			StopPlayerRunIntoAnimation = true;
 			crushDir = Vector2.Zero;
 			TurnOffImages();
@@ -863,7 +893,10 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 					PlayOneShotSfx("event:/game/06_reflection/crushblock_rest_waypoint", Center, EnableRestWaypointSfx && Returnable);
 				}
 				waypointSfxDelay = 0.1f;
-				StartShaking(0.2f);
+				if (EnableShakeEffects)
+				{
+					StartShaking(0.2f);
+				}
 				yield return 0.2f;
 			}
 		}
