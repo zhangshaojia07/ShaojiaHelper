@@ -503,7 +503,7 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 			{
 				if (borderX < 0)
 				{
-					Image image4 = new Image(GFX.Game["objects/crushblock/lit_left"].GetSubtexture(0, ty * 8, 8, 8));
+					Image image4 = new Image(GFX.Game["objects/ShaojiaHelper/crusherKevin/lit_left"].GetSubtexture(0, ty * 8, 8, 8));
 					activeLeftImages.Add(image4);
 					image4.Position = vector;
 					image4.Visible = false;
@@ -511,7 +511,7 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 				}
 				else if (borderX > 0)
 				{
-					Image image5 = new Image(GFX.Game["objects/crushblock/lit_right"].GetSubtexture(0, ty * 8, 8, 8));
+					Image image5 = new Image(GFX.Game["objects/ShaojiaHelper/crusherKevin/lit_right"].GetSubtexture(0, ty * 8, 8, 8));
 					activeRightImages.Add(image5);
 					image5.Position = vector;
 					image5.Visible = false;
@@ -519,7 +519,7 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 				}
 				if (borderY < 0)
 				{
-					Image image6 = new Image(GFX.Game["objects/crushblock/lit_top"].GetSubtexture(tx * 8, 0, 8, 8));
+					Image image6 = new Image(GFX.Game["objects/ShaojiaHelper/crusherKevin/lit_top"].GetSubtexture(tx * 8, 0, 8, 8));
 					activeTopImages.Add(image6);
 					image6.Position = vector;
 					image6.Visible = false;
@@ -527,7 +527,7 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 				}
 				else if (borderY > 0)
 				{
-					Image image7 = new Image(GFX.Game["objects/crushblock/lit_bottom"].GetSubtexture(tx * 8, 0, 8, 8));
+					Image image7 = new Image(GFX.Game["objects/ShaojiaHelper/crusherKevin/lit_bottom"].GetSubtexture(tx * 8, 0, 8, 8));
 					activeBottomImages.Add(image7);
 					image7.Position = vector;
 					image7.Visible = false;
