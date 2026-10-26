@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using Celeste.Mod.Entities;
+using FMOD.Studio;
 using Microsoft.Xna.Framework;
 using Monocle;
 
@@ -32,14 +33,23 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 		private const float ReturnSpeed = 60f;
 		private const float ReturnAccel = 160f;
 
-		private const float SfxMaxVolume = 1.0f;
-		private const float SfxMinVolume = 0.05f;
-		private const float SfxDecayRate = 0.85f;
 		private const int SfxIntervalLeniency = 3;
+		private const int SfxSightLeniency = 3;
+		private const float ImpactVolumeThreshold = 0.2f;
+		// Temporary ML volume; tune this value later.
+		private const float MoveLoopSfxVolume = 0.5f;
+
+		// SFX debug switches.
+		private static readonly bool EnableAttackSfx = true;
+		private static readonly bool EnableImpactSfx = true;
+		private static readonly bool EnableRestSfx = true;
+		private static readonly bool EnableRestWaypointSfx = true;
+		private static readonly bool EnableMoveLoopSfx = false;
+		private static readonly bool EnableReturnLoopSfx = false;
 
 		private Color fill = Calc.HexToColor("62222b");
 
-		private Level level;
+		private Level level = null!;
 
 		private Vector2 crushDir;
 		private Vector2 lastCrushDir;
@@ -62,7 +72,7 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 
 		private Sprite face;
 
-		private string nextFaceDirection;
+		private string nextFaceDirection = "idle";
 
 		private List<Image> idleImages = new List<Image>();
 		private List<Image> activeTopImages = new List<Image>();
@@ -70,13 +80,126 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 		private List<Image> activeLeftImages = new List<Image>();
 		private List<Image> activeBottomImages = new List<Image>();
 
-		private SoundSource currentMoveLoopSfx;
+		private EventInstance? currentMoveLoopSfx;
+		private bool currentMoveLoopSfxIs3D;
+		private readonly List<EventInstance> endingMoveLoopSfx = new List<EventInstance>();
 		private SoundSource returnLoopSfx;
 
 		private int framesSinceLastAttack = 0;
-		private float currentSfxVolume = 1.0f;
+		// Updated after the player scan; Attack() reads the value from the previous frame.
+		private int framesSincePlayerSeen = int.MaxValue;
 
 		private bool Submerged => base.Scene.CollideCheck<Water>(new Rectangle((int)(base.Center.X - 4f), (int)base.Center.Y, 8, 4));
+
+		private bool Returnable => !nonReturn;
+
+		private void PlayOneShotSfx(string eventPath, Vector2 position, bool enabled)
+		{
+			if (!enabled)
+			{
+				return;
+			}
+
+			Audio.Play(eventPath, position);
+		}
+
+		private void PlayImpactSfx(Vector2 position, float volume)
+		{
+			if (!EnableImpactSfx)
+			{
+				return;
+			}
+
+			var sfx = Audio.Play("event:/game/06_reflection/crushblock_impact", position);
+			if (sfx != null)
+			{
+				sfx.setVolume(volume);
+			}
+		}
+
+		private float GetImpactSfxVolume(float impactSpeed)
+		{
+			if (chillOut)
+			{
+				return 1f;
+			}
+
+			// Linear for now; change this line if the volume curve needs tuning.
+			return Calc.Clamp(impactSpeed / CrushSpeed, 0f, 1f);
+		}
+
+		private bool HasMovedSinceAttack(Vector2 attackStartPosition)
+		{
+			if (crushDir.X != 0f)
+			{
+				return Position.X != attackStartPosition.X;
+			}
+			if (crushDir.Y != 0f)
+			{
+				return Position.Y != attackStartPosition.Y;
+			}
+			return Position != attackStartPosition;
+		}
+
+		private EventInstance? PlayMoveLoopSfx(string eventPath)
+		{
+			EventDescription? description = Audio.GetEventDescription(eventPath);
+			if (description == null)
+			{
+				return null;
+			}
+
+			bool is3D = false;
+			description.is3D(out is3D);
+			currentMoveLoopSfxIs3D = is3D;
+
+			EventInstance? sfx = Audio.CreateInstance(eventPath, Center);
+			if (sfx == null)
+			{
+				return null;
+			}
+
+			// Set volume before starting so the loop never begins at full volume.
+			sfx.setVolume(MoveLoopSfxVolume);
+			sfx.start();
+			return sfx;
+		}
+
+		private void EndMoveLoopSfx(EventInstance sfx)
+		{
+			Audio.SetParameter(sfx, "end", 1f);
+			endingMoveLoopSfx.Add(sfx);
+			Alarm.Set(this, 0.5f, delegate
+			{
+				if (endingMoveLoopSfx.Remove(sfx))
+				{
+					Audio.Stop(sfx);
+				}
+			});
+		}
+
+		private void StopMoveLoopSfx(bool allowFadeOut)
+		{
+			if (currentMoveLoopSfx != null)
+			{
+				Audio.Stop(currentMoveLoopSfx, allowFadeOut);
+				currentMoveLoopSfx = null;
+			}
+
+			foreach (EventInstance sfx in endingMoveLoopSfx)
+			{
+				Audio.Stop(sfx, allowFadeOut);
+			}
+			endingMoveLoopSfx.Clear();
+		}
+
+		private bool ShouldSuppressAttackSfx(Vector2 direction)
+		{
+			// Kevin saw a player very recently, and this trigger repeats
+			// the previous attack direction.
+			return framesSincePlayerSeen <= SfxSightLeniency
+				&& direction == lastCrushDir;
+		}
 
 		public CrusherKevin(Vector2 position, float width, float height, bool right, bool up, bool left, bool down, bool chillOut = false, bool interruptable = false, bool nonReturn = true)
 			: base(position, width, height, safe: false)
@@ -127,6 +250,13 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 			}
 			Add(new LightOcclude(0.2f));
 			Add(returnLoopSfx = new SoundSource());
+			Add(new TransitionListener
+			{
+				OnOutBegin = delegate
+				{
+					StopMoveLoopSfx(allowFadeOut: true);
+				}
+			});
 			Add(new WaterInteraction(() => crushDir != Vector2.Zero));
 		}
 
@@ -140,6 +270,18 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 		{
 			base.Added(scene);
 			level = SceneAs<Level>();
+		}
+
+		public override void Removed(Scene scene)
+		{
+			StopMoveLoopSfx(allowFadeOut: true);
+			base.Removed(scene);
+		}
+
+		public override void SceneEnd(Scene scene)
+		{
+			StopMoveLoopSfx(allowFadeOut: false);
+			base.SceneEnd(scene);
 		}
 
 		// Some code for this function is taken from CommunalHelper, written by Catapillie
@@ -215,7 +357,11 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 			}
 			if (currentMoveLoopSfx != null)
 			{
-				currentMoveLoopSfx.Param("submerged", Submerged ? 1 : 0);
+				if (currentMoveLoopSfxIs3D)
+				{
+					Audio.Position(currentMoveLoopSfx, Center);
+				}
+				Audio.SetParameter(currentMoveLoopSfx, "submerged", Submerged ? 1f : 0f);
 			}
 			if (returnLoopSfx != null)
 			{
@@ -226,61 +372,65 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 				framesSinceLastAttack++;
 			}
 			bool attacked = false;
-            if (canActivate)
-            {
-                foreach (Player player in base.Scene.Tracker.GetEntities<Player>())
-                {
-                    Vector2 dir;
-                    int up = (int)(Position.Y - player.Bottom);
-                    int down = (int)(player.Top - Position.Y - Height);
-                    int left = (int)(Position.X - player.Right);
-                    int right = (int)(player.Left - Position.X - Width);
-                    if (up>=0 && left<0 && right<0)
-                    {
-                        dir.X=0;
-                        dir.Y=-1;
-                    }
-                    else if (down>=0 && left<0 && right<0)
-                    {
-                        dir.X=0;
-                        dir.Y=1;
-                    }
-                    else if (left>=0 && up<0 && down<0)
-                    {
-                        dir.X=-1;
-                        dir.Y=0;
-                    }
-                    else if (right>=0 && up<0 && down<0)
-                    {
-                        dir.X=1;
-                        dir.Y=0;
-                    }
-                    else
-                    {
-                        continue;
-                    }
-                    // Engine.Commands.Log($"[Debug] U:{up} D:{down} L:{left} R:{right}");
-                    if (!CanActivate(dir))
-                    {
-                        continue;
-                    }
-                    if (requiresLineOfSight && !IsPlayerSeen(player, dir))
-                    {
-                        continue;
-                    }
-                    Attack(dir);
-                    attacked = true;
-                }    
-            }
+			bool playerSeenThisFrame = false;
+			foreach (Player player in base.Scene.Tracker.GetEntities<Player>())
+			{
+				Vector2 dir;
+				int up = (int)(Position.Y - player.Bottom);
+				int down = (int)(player.Top - Position.Y - Height);
+				int left = (int)(Position.X - player.Right);
+				int right = (int)(player.Left - Position.X - Width);
+				if (up>=0 && left<0 && right<0)
+				{
+					dir.X=0;
+					dir.Y=-1;
+				}
+				else if (down>=0 && left<0 && right<0)
+				{
+					dir.X=0;
+					dir.Y=1;
+				}
+				else if (left>=0 && up<0 && down<0)
+				{
+					dir.X=-1;
+					dir.Y=0;
+				}
+				else if (right>=0 && up<0 && down<0)
+				{
+					dir.X=1;
+					dir.Y=0;
+				}
+				else
+				{
+					continue;
+				}
+				// Engine.Commands.Log($"[Debug] U:{up} D:{down} L:{left} R:{right}");
+				if (requiresLineOfSight && !IsPlayerSeen(player, dir))
+				{
+					continue;
+				}
+				playerSeenThisFrame = true;
+				if (!CanActivate(dir))
+				{
+					continue;
+				}
+				Attack(dir);
+				attacked = true;
+			}
+			// Keep the pre-frame value while Attack() runs so condition 2 sees how
+			// many consecutive frames Kevin had temporarily lost sight of a player.
+			if (playerSeenThisFrame)
+			{
+				framesSincePlayerSeen = 0;
+			}
+			else if (framesSincePlayerSeen < int.MaxValue)
+			{
+				framesSincePlayerSeen++;
+			}
 			if (framesSinceLastAttack >= SfxIntervalLeniency && !attacked && crushDir == Vector2.Zero && currentMoveLoopSfx != null)
 			{
-				currentMoveLoopSfx.Param("end", 1f);
-				SoundSource sfx = currentMoveLoopSfx;
+				EndMoveLoopSfx(currentMoveLoopSfx);
 				currentMoveLoopSfx = null;
-				Alarm.Set(this, 0.5f, delegate
-				{
-					sfx.RemoveSelf();
-				});
 			}
 		}
 
@@ -392,41 +542,27 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 
 		private void Attack(Vector2 direction)
 		{
-			if (framesSinceLastAttack <= SfxIntervalLeniency && direction == lastCrushDir)
+			// A new attack replaces the return coroutine, so stop its loop here;
+			// the coroutine's own Stop() call will never run when interrupted.
+			returnLoopSfx.Stop();
+			if (!ShouldSuppressAttackSfx(direction))
 			{
-				currentSfxVolume = (currentSfxVolume - SfxMinVolume) * SfxDecayRate + SfxMinVolume;
+				PlayOneShotSfx("event:/game/06_reflection/crushblock_activate", base.Center, EnableAttackSfx);
 			}
-			else
-			{
-				currentSfxVolume = SfxMaxVolume;
-			}
-			// Engine.Commands.Log($"[Debug] framesSinceLastAttack:{framesSinceLastAttack} currentSfxVolume:{currentSfxVolume}");
-			var activateSfx = Audio.Play("event:/game/06_reflection/crushblock_activate", base.Center);
-			if (activateSfx != null)
-			{
-				activateSfx.setVolume(currentSfxVolume);
-			}
-			if (framesSinceLastAttack > SfxIntervalLeniency || currentMoveLoopSfx == null)
+			if (EnableMoveLoopSfx && (framesSinceLastAttack > SfxIntervalLeniency || currentMoveLoopSfx == null))
 			{
 				if (currentMoveLoopSfx != null)
 				{
-					currentMoveLoopSfx.Param("end", 1f);
-					SoundSource sfx = currentMoveLoopSfx;
-					Alarm.Set(this, 0.5f, delegate
-					{
-						sfx.RemoveSelf();
-					});
+					EndMoveLoopSfx(currentMoveLoopSfx);
+					currentMoveLoopSfx = null;
 				}
-				Add(currentMoveLoopSfx = new SoundSource());
-				currentMoveLoopSfx.Position = new Vector2(base.Width, base.Height) / 2f;
+
+				string moveLoopSfxPath = "event:/game/06_reflection/crushblock_move_loop";
 				if (SaveData.Instance != null && SaveData.Instance.Name != null && SaveData.Instance.Name.StartsWith("FWAHAHA", StringComparison.InvariantCultureIgnoreCase))
 				{
-					currentMoveLoopSfx.Play("event:/game/06_reflection/crushblock_move_loop_covert");
+					moveLoopSfxPath = "event:/game/06_reflection/crushblock_move_loop_covert";
 				}
-				else
-				{
-					currentMoveLoopSfx.Play("event:/game/06_reflection/crushblock_move_loop");
-				}
+				currentMoveLoopSfx = PlayMoveLoopSfx(moveLoopSfxPath);
 			}
 			face.Play("hit");
 			crushDir = direction;
@@ -523,6 +659,9 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 
 		private IEnumerator AttackSequence()
 		{
+			// Snapshot the position at attack time so Impact can be skipped when
+			// Kevin never actually moved along this crush direction.
+			Vector2 attackStartPosition = Position;
 			Input.Rumble(RumbleStrength.Strong, RumbleLength.Medium);
 			StartShaking(0.4f);
 			yield return 0.4f;
@@ -653,9 +792,14 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 				}
 			}
 			coolingDown = true;
-			var activateSfx = Audio.Play("event:/game/06_reflection/crushblock_impact", Center);
-			if (activateSfx != null) {
-				activateSfx.setVolume(currentSfxVolume);
+			// Non-chillout speed only increases, so the speed on the collision frame
+			// is this attack's maximum. Chillout always returns full volume.
+			float impactVolume = GetImpactSfxVolume(speed);
+			bool movedSinceAttack = HasMovedSinceAttack(attackStartPosition);
+			bool playImpact = movedSinceAttack && impactVolume >= ImpactVolumeThreshold;
+			if (playImpact)
+			{
+				PlayImpactSfx(Center, impactVolume);
 			}
 			level.DirectionalShake(crushDir);
 			Input.Rumble(RumbleStrength.Medium, RumbleLength.Medium);
@@ -672,14 +816,14 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 			if (nonReturn)
 			{
 				face.Play("idle");
-				activateSfx = Audio.Play("event:/game/06_reflection/crushblock_rest", Center);
-				if (activateSfx != null) {
-					activateSfx.setVolume(currentSfxVolume);
-				}
+				// Not returnable: R and return_waypoint are canceled.
 				yield break;
 			}
 			face.Play("hurt");
-			returnLoopSfx.Play("event:/game/06_reflection/crushblock_return_loop");
+			if (EnableReturnLoopSfx)
+			{
+				returnLoopSfx.Play("event:/game/06_reflection/crushblock_return_loop");
+			}
 			yield return 0.4f;
 			speed = 0f;
 			float waypointSfxDelay = 0f;
@@ -711,12 +855,12 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 					returnLoopSfx.Stop();
 					if (waypointSfxDelay <= 0f)
 					{
-						Audio.Play("event:/game/06_reflection/crushblock_rest", Center);
+						PlayOneShotSfx("event:/game/06_reflection/crushblock_rest", Center, EnableRestSfx && Returnable);
 					}
 				}
 				else if (waypointSfxDelay <= 0f)
 				{
-					Audio.Play("event:/game/06_reflection/crushblock_rest_waypoint", Center);
+					PlayOneShotSfx("event:/game/06_reflection/crushblock_rest_waypoint", Center, EnableRestWaypointSfx && Returnable);
 				}
 				waypointSfxDelay = 0.1f;
 				StartShaking(0.2f);
