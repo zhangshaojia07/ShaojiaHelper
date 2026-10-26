@@ -8,6 +8,7 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 
     [CustomEntity("ShaojiaHelper/CrusherKevin")]
     public class CrusherKevin : Solid {
+        // Kept from vanilla CrushBlock; currently unused.
         public enum Axes
 		{
 			Both,
@@ -36,7 +37,6 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 		private const int SfxIntervalLeniency = 3;
 		private const int SfxSightLeniency = 3;
 		private const float ImpactVolumeThreshold = 0.2f;
-		// Temporary ML volume; tune this value later.
 		private const float MoveLoopSfxVolume = 0.5f;
 
 		// Impact block-shake square wave: shake for ImpactShakeOnTime, then stay idle
@@ -77,7 +77,6 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 		private bool canMoveLeft;
 		private bool canMoveRight;
 		private bool chillOut;
-		private bool coolingDown;
 		private bool giant;
 		private bool requiresLineOfSight;
 		private bool interruptable;
@@ -87,6 +86,7 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 
 		private string nextFaceDirection = "idle";
 
+		// Kept from vanilla CrushBlock; currently unused.
 		private List<Image> idleImages = new List<Image>();
 		private List<Image> activeTopImages = new List<Image>();
 		private List<Image> activeRightImages = new List<Image>();
@@ -98,7 +98,8 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 		private readonly List<EventInstance> endingMoveLoopSfx = new List<EventInstance>();
 		private SoundSource returnLoopSfx;
 
-		private int framesSinceLastAttack = 0;
+		// Frames since the movement phase of an attack started (reset after the wind-up).
+		private int framesSinceMoveStart = 0;
 		// Updated after the player scan; Attack() reads the value from the previous frame.
 		private int framesSincePlayerSeen = int.MaxValue;
 
@@ -231,7 +232,6 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 			this.interruptable = interruptable;
 			this.nonReturn = nonReturn;
 			giant = base.Width >= 48f && base.Height >= 48f && chillOut;
-			coolingDown = false;
 			canActivate = true;
 			attackCoroutine = new Coroutine();
 			attackCoroutine.RemoveOnComplete = false;
@@ -386,9 +386,7 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 				returnLoopSfx.Param("submerged", Submerged ? 1 : 0);
 			}
 
-			if (!coolingDown){
-				framesSinceLastAttack++;
-			}
+			framesSinceMoveStart++;
 			bool attacked = false;
 			bool playerSeenThisFrame = false;
 			foreach (Player player in base.Scene.Tracker.GetEntities<Player>())
@@ -422,7 +420,6 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 				{
 					continue;
 				}
-				// Engine.Commands.Log($"[Debug] U:{up} D:{down} L:{left} R:{right}");
 				if (requiresLineOfSight && !IsPlayerSeen(player, dir))
 				{
 					continue;
@@ -445,7 +442,7 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 			{
 				framesSincePlayerSeen++;
 			}
-			if (framesSinceLastAttack >= SfxIntervalLeniency && !attacked && crushDir == Vector2.Zero && currentMoveLoopSfx != null)
+			if (framesSinceMoveStart >= SfxIntervalLeniency && !attacked && crushDir == Vector2.Zero && currentMoveLoopSfx != null)
 			{
 				EndMoveLoopSfx(currentMoveLoopSfx);
 				currentMoveLoopSfx = null;
@@ -591,11 +588,10 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 				// New attack (direction changed or sight broken): end the previous
 				// impact-shake wave; this attack's impact restarts it from phase 0.
 				impactShakeWaveActive = false;
-				impactShakePhase = 0f;
 			}
 			// Keep the impact-shake wave alive while attacks keep coming.
 			impactShakeDeadline = Scene.TimeActive + ImpactShakeOnTime + ImpactShakeOffTime;
-			if (EnableMoveLoopSfx && (framesSinceLastAttack > SfxIntervalLeniency || currentMoveLoopSfx == null))
+			if (EnableMoveLoopSfx && (framesSinceMoveStart > SfxIntervalLeniency || currentMoveLoopSfx == null))
 			{
 				if (currentMoveLoopSfx != null)
 				{
@@ -727,7 +723,7 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 				StartShaking(0.4f);
 			}
 			yield return 0.4f;
-			framesSinceLastAttack = 0;
+			framesSinceMoveStart = 0;
 			if (!chillOut && interruptable)
 			{
 				canActivate = true;
@@ -858,7 +854,6 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 					}
 				}
 			}
-			coolingDown = true;
 			// Non-chillout speed only increases, so the speed on the collision frame
 			// is this attack's maximum. Chillout always returns full volume.
 			float impactVolume = GetImpactSfxVolume(speed);
@@ -890,7 +885,6 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 			StopPlayerRunIntoAnimation = true;
 			crushDir = Vector2.Zero;
 			TurnOffImages();
-			coolingDown = false;
 			if (chillOut)
 			{
 				yield break;
