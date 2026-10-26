@@ -50,7 +50,7 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 		// Particle debug switches.
 		private static readonly bool EnableActivateParticles = false;
 		private static readonly bool EnableCrushingParticles = false;
-		private static readonly bool EnableImpactParticles = false;
+		private static readonly bool EnableImpactParticles = true;
 
 		// Shake debug switch; covers block shake, directional screen shake and controller rumble.
 		private static readonly bool EnableShakeEffects = true;
@@ -671,9 +671,9 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 			}
 		}
 
-		private static void EmitImpactParticle(Level level, Vector2 position, float direction)
+		private static void EmitImpactParticle(Level level, Vector2 position, float direction, bool moved)
 		{
-			if (!EnableImpactParticles)
+			if (!EnableImpactParticles || !moved)
 			{
 				return;
 			}
@@ -769,6 +769,8 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 			{
 				fallingBlock.Triggered = true;
 			}
+			// Same trigger as the impact shake: this attack actually moved along crushDir.
+			bool movedSinceAttack = HasMovedSinceAttack(attackStartPosition);
 			if (crushDir == -Vector2.UnitX)
 			{
 				Vector2 vector = new Vector2(0f, 2f);
@@ -777,8 +779,8 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 					Vector2 vector2 = new Vector2(Left - 1f, Top + 4f + (float)(i * 8));
 					if (!Scene.CollideCheck<Water>(vector2) && Scene.CollideCheck<Solid>(vector2))
 					{
-						EmitImpactParticle(level, vector2 + vector, 0f);
-						EmitImpactParticle(level, vector2 - vector, 0f);
+						EmitImpactParticle(level, vector2 + vector, 0f, movedSinceAttack);
+						EmitImpactParticle(level, vector2 - vector, 0f, movedSinceAttack);
 					}
 				}
 			}
@@ -790,8 +792,8 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 					Vector2 vector4 = new Vector2(Right + 1f, Top + 4f + (float)(j * 8));
 					if (!Scene.CollideCheck<Water>(vector4) && Scene.CollideCheck<Solid>(vector4))
 					{
-						EmitImpactParticle(level, vector4 + vector3, (float)Math.PI);
-						EmitImpactParticle(level, vector4 - vector3, (float)Math.PI);
+						EmitImpactParticle(level, vector4 + vector3, (float)Math.PI, movedSinceAttack);
+						EmitImpactParticle(level, vector4 - vector3, (float)Math.PI, movedSinceAttack);
 					}
 				}
 			}
@@ -803,8 +805,8 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 					Vector2 vector6 = new Vector2(Left + 4f + (float)(k * 8), Top - 1f);
 					if (!Scene.CollideCheck<Water>(vector6) && Scene.CollideCheck<Solid>(vector6))
 					{
-						EmitImpactParticle(level, vector6 + vector5, (float)Math.PI / 2f);
-						EmitImpactParticle(level, vector6 - vector5, (float)Math.PI / 2f);
+						EmitImpactParticle(level, vector6 + vector5, (float)Math.PI / 2f, movedSinceAttack);
+						EmitImpactParticle(level, vector6 - vector5, (float)Math.PI / 2f, movedSinceAttack);
 					}
 				}
 			}
@@ -816,8 +818,8 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 					Vector2 vector8 = new Vector2(Left + 4f + (float)(l * 8), Bottom + 1f);
 					if (!Scene.CollideCheck<Water>(vector8) && Scene.CollideCheck<Solid>(vector8))
 					{
-						EmitImpactParticle(level, vector8 + vector7, -(float)Math.PI / 2f);
-						EmitImpactParticle(level, vector8 - vector7, -(float)Math.PI / 2f);
+						EmitImpactParticle(level, vector8 + vector7, -(float)Math.PI / 2f, movedSinceAttack);
+						EmitImpactParticle(level, vector8 - vector7, -(float)Math.PI / 2f, movedSinceAttack);
 					}
 				}
 			}
@@ -825,7 +827,6 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 			// Non-chillout speed only increases, so the speed on the collision frame
 			// is this attack's maximum. Chillout always returns full volume.
 			float impactVolume = GetImpactSfxVolume(speed);
-			bool movedSinceAttack = HasMovedSinceAttack(attackStartPosition);
 			// The impact SFX and the impact shake are independent effects: the SFX
 			// additionally needs enough impact speed, while the shake only needs
 			// actual displacement along crushDir during this attack.
