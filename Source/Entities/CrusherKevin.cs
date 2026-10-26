@@ -53,7 +53,7 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 		private static readonly bool EnableImpactParticles = false;
 
 		// Shake debug switch; covers block shake, directional screen shake and controller rumble.
-		private static readonly bool EnableShakeEffects = false;
+		private static readonly bool EnableShakeEffects = true;
 
 		private Color fill = Calc.HexToColor("62222b");
 
@@ -553,7 +553,10 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 			// A new attack replaces the return coroutine, so stop its loop here;
 			// the coroutine's own Stop() call will never run when interrupted.
 			returnLoopSfx.Stop();
-			if (!ShouldSuppressAttackSfx(direction))
+			// The activate SFX and the attack shake are independent effects that
+			// happen to share this trigger condition, so evaluate it once.
+			bool isRepeatAttack = ShouldSuppressAttackSfx(direction);
+			if (!isRepeatAttack)
 			{
 				PlayOneShotSfx("event:/game/06_reflection/crushblock_activate", base.Center, EnableAttackSfx);
 			}
@@ -576,7 +579,7 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 			crushDir = direction;
 			lastCrushDir = direction;
 			canActivate = false;
-			attackCoroutine.Replace(AttackSequence());
+			attackCoroutine.Replace(AttackSequence(shakeOnStart: !isRepeatAttack));
 			ClearRemainder();
 			TurnOffImages();
 			ActivateParticles(crushDir);
@@ -678,12 +681,12 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 			level.ParticlesFG.Emit(CrushBlock.P_Impact, position, direction);
 		}
 
-		private IEnumerator AttackSequence()
+		private IEnumerator AttackSequence(bool shakeOnStart)
 		{
 			// Snapshot the position at attack time so Impact can be skipped when
 			// Kevin never actually moved along this crush direction.
 			Vector2 attackStartPosition = Position;
-			if (EnableShakeEffects)
+			if (EnableShakeEffects && shakeOnStart)
 			{
 				Input.Rumble(RumbleStrength.Strong, RumbleLength.Medium);
 				StartShaking(0.4f);
@@ -823,12 +826,15 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 			// is this attack's maximum. Chillout always returns full volume.
 			float impactVolume = GetImpactSfxVolume(speed);
 			bool movedSinceAttack = HasMovedSinceAttack(attackStartPosition);
+			// The impact SFX and the impact shake are independent effects: the SFX
+			// additionally needs enough impact speed, while the shake only needs
+			// actual displacement along crushDir during this attack.
 			bool playImpact = movedSinceAttack && impactVolume >= ImpactVolumeThreshold;
 			if (playImpact)
 			{
 				PlayImpactSfx(Center, impactVolume);
 			}
-			if (EnableShakeEffects)
+			if (EnableShakeEffects && movedSinceAttack)
 			{
 				level.DirectionalShake(crushDir);
 				Input.Rumble(RumbleStrength.Medium, RumbleLength.Medium);
