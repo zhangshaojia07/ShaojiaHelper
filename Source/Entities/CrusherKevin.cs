@@ -39,6 +39,11 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 		// Temporary ML volume; tune this value later.
 		private const float MoveLoopSfxVolume = 0.5f;
 
+		// Impact block-shake square wave: shake for ImpactShakeOnTime, then stay idle
+		// for ImpactShakeOffTime, repeating while Kevin keeps being activated.
+		private const float ImpactShakeOnTime = 0.4f;
+		private const float ImpactShakeOffTime = 0.8f;
+
 		// SFX debug switches.
 		private static readonly bool EnableAttackSfx = true;
 		private static readonly bool EnableImpactSfx = true;
@@ -96,6 +101,11 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 		private int framesSinceLastAttack = 0;
 		// Updated after the player scan; Attack() reads the value from the previous frame.
 		private int framesSincePlayerSeen = int.MaxValue;
+
+		// Impact block-shake square wave state.
+		private float impactShakePhase;
+		private float impactShakeDeadline;
+		private bool impactShakeWaveActive;
 
 		private bool Submerged => base.Scene.CollideCheck<Water>(new Rectangle((int)(base.Center.X - 4f), (int)base.Center.Y, 8, 4));
 
@@ -440,6 +450,25 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 				EndMoveLoopSfx(currentMoveLoopSfx);
 				currentMoveLoopSfx = null;
 			}
+			if (EnableShakeEffects && impactShakeWaveActive)
+			{
+				// Stop the wave as soon as Kevin loses sight of the player for longer
+				// than the SFX sight leniency, or when attacks stop (deadline).
+				if (framesSincePlayerSeen > SfxSightLeniency || Scene.TimeActive > impactShakeDeadline)
+				{
+					impactShakeWaveActive = false;
+					impactShakePhase = 0f;
+				}
+				else
+				{
+					impactShakePhase += Engine.DeltaTime;
+					if (impactShakePhase >= ImpactShakeOnTime + ImpactShakeOffTime)
+					{
+						StartShaking(ImpactShakeOnTime);
+						impactShakePhase -= ImpactShakeOnTime + ImpactShakeOffTime;
+					}
+				}
+			}
 		}
 
 		public override void Render()
@@ -559,7 +588,13 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 			if (!isRepeatAttack)
 			{
 				PlayOneShotSfx("event:/game/06_reflection/crushblock_activate", base.Center, EnableAttackSfx);
+				// New attack (direction changed or sight broken): end the previous
+				// impact-shake wave; this attack's impact restarts it from phase 0.
+				impactShakeWaveActive = false;
+				impactShakePhase = 0f;
 			}
+			// Keep the impact-shake wave alive while attacks keep coming.
+			impactShakeDeadline = Scene.TimeActive + ImpactShakeOnTime + ImpactShakeOffTime;
 			if (EnableMoveLoopSfx && (framesSinceLastAttack > SfxIntervalLeniency || currentMoveLoopSfx == null))
 			{
 				if (currentMoveLoopSfx != null)
@@ -579,7 +614,7 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 			crushDir = direction;
 			lastCrushDir = direction;
 			canActivate = false;
-			attackCoroutine.Replace(AttackSequence(shakeOnStart: !isRepeatAttack));
+			attackCoroutine.Replace(AttackSequence(isRepeatAttack: isRepeatAttack));
 			ClearRemainder();
 			TurnOffImages();
 			ActivateParticles(crushDir);
@@ -681,12 +716,12 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 			level.ParticlesFG.Emit(CrushBlock.P_Impact, position, direction);
 		}
 
-		private IEnumerator AttackSequence(bool shakeOnStart)
+		private IEnumerator AttackSequence(bool isRepeatAttack)
 		{
 			// Snapshot the position at attack time so Impact can be skipped when
 			// Kevin never actually moved along this crush direction.
 			Vector2 attackStartPosition = Position;
-			if (EnableShakeEffects && shakeOnStart)
+			if (EnableShakeEffects && !isRepeatAttack)
 			{
 				Input.Rumble(RumbleStrength.Strong, RumbleLength.Medium);
 				StartShaking(0.4f);
@@ -827,9 +862,9 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 			// Non-chillout speed only increases, so the speed on the collision frame
 			// is this attack's maximum. Chillout always returns full volume.
 			float impactVolume = GetImpactSfxVolume(speed);
-			// The impact SFX and the impact shake are independent effects: the SFX
-			// additionally needs enough impact speed, while the shake only needs
-			// actual displacement along crushDir during this attack.
+			// Impact SFX needs enough impact speed; the directional screen shake and
+			// rumble only need displacement; the block shake is a 0.4/0.8 square wave
+			// driven separately while Kevin is continuously activated.
 			bool playImpact = movedSinceAttack && impactVolume >= ImpactVolumeThreshold;
 			if (playImpact)
 			{
@@ -839,7 +874,18 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 			{
 				level.DirectionalShake(crushDir);
 				Input.Rumble(RumbleStrength.Medium, RumbleLength.Medium);
-				StartShaking(0.4f);
+			}
+			if (EnableShakeEffects)
+			{
+				if (!isRepeatAttack || !impactShakeWaveActive)
+				{
+					// Fresh attack, or the wave stopped between attacks: one-shot impact
+					// shake and (re)start the square wave from its on phase.
+					StartShaking(ImpactShakeOnTime);
+					impactShakeWaveActive = true;
+					impactShakePhase = 0f;
+				}
+				// Repeat attack with a running wave: connect, keeping the phase.
 			}
 			StopPlayerRunIntoAnimation = true;
 			crushDir = Vector2.Zero;
