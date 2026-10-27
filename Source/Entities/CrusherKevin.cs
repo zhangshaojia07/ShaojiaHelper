@@ -37,12 +37,12 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 		private const int SfxIntervalLeniency = 3;
 		private const int SfxSightLeniency = 3;
 		private const float ImpactVolumeThreshold = 0.2f;
-		private const float MoveLoopSfxVolume = 0.5f;
+		private const float MoveLoopSfxVolume = 1.0f;
 
 		// Shared impact-effect throttle: fire for ImpactShakeOnTime, then stay idle
 		// for ImpactShakeOffTime before the next one is allowed.
 		private const float ImpactShakeOnTime = 0.4f;
-		private const float ImpactShakeOffTime = 1.6f;
+		private const float ImpactShakeOffTime = 0.8f;
 
 		// SFX debug switches.
 		private static readonly bool EnableAttackSfx = true;
