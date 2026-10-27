@@ -38,15 +38,13 @@ In VS Code, open this folder and press `Ctrl+Shift+B` to run the same task
 If you find bugs, create a new issue or a pull request to let me know.
 
 ## Changelog
-### Version 1.0.1 - Second Release
-#### Changes:
+### Version 1.0.1
  - Reworked the sound effect logic: each sound effect now has its own independent logic
  - Added master switches for particles and screen shake, along with new logic
  - Added custom kevin lit textures
  - Changed the default value of nonReturn to true
  - Migrated the build to net8.0 + Linux scripts, changed the dependency to EverestCore, and added Settings/Session/SaveData skeletons
 
-### Version 1.0.0 - First Release
-#### Features:
+### Version 1.0.0
  - Loenn plugins support
  - Added Crusher Kevins, which activate when they have a line of sight to the player in four directions.
