@@ -102,6 +102,9 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 		private int framesSinceMoveStart = 0;
 		// Updated after the player scan; Attack() reads the value from the previous frame.
 		private int framesSincePlayerSeen = int.MaxValue;
+		// Direction Kevin last saw a player in; kept in sync with framesSincePlayerSeen
+		// so Attack() also reads the previous frame's value.
+		private Vector2 lastSeenDirection;
 
 		// Impact block-shake square wave state.
 		private float impactShakePhase;
@@ -214,9 +217,12 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 
 		private bool ShouldSuppressAttackSfx(Vector2 direction)
 		{
-			// Kevin saw a player very recently, and this trigger repeats
-			// the previous attack direction.
+			// Suppress only when Kevin saw a player very recently on this same side
+			// and this trigger repeats the previous attack direction. A player seen on
+			// a different side (including a side Kevin cannot move toward) must not
+			// mute a fresh attack on this side.
 			return framesSincePlayerSeen <= SfxSightLeniency
+				&& direction == lastSeenDirection
 				&& direction == lastCrushDir;
 		}
 
@@ -389,6 +395,7 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 			framesSinceMoveStart++;
 			bool attacked = false;
 			bool playerSeenThisFrame = false;
+			Vector2 seenDirection = Vector2.Zero;
 			foreach (Player player in base.Scene.Tracker.GetEntities<Player>())
 			{
 				Vector2 dir;
@@ -425,6 +432,7 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 					continue;
 				}
 				playerSeenThisFrame = true;
+				seenDirection = dir;
 				if (!CanActivate(dir))
 				{
 					continue;
@@ -432,11 +440,13 @@ namespace Celeste.Mod.ShaojiaHelper.Entities {
 				Attack(dir);
 				attacked = true;
 			}
-			// Keep the pre-frame value while Attack() runs so condition 2 sees how
-			// many consecutive frames Kevin had temporarily lost sight of a player.
+			// Keep the pre-frame values while Attack() runs so condition 2 sees how
+			// many consecutive frames Kevin had temporarily lost sight of a player,
+			// and on which side the player was last seen.
 			if (playerSeenThisFrame)
 			{
 				framesSincePlayerSeen = 0;
+				lastSeenDirection = seenDirection;
 			}
 			else if (framesSincePlayerSeen < int.MaxValue)
 			{
